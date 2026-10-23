@@ -94,6 +94,20 @@ java java-client/SearchLiteXClient.java "python search"
 | DELETE | `/api/documents/{id}` | Remove page and postings |
 | GET | `/docs` | Interactive OpenAPI documentation |
 
+## Verified local test results
+
+**Local validation reported October 23, 2026:** The user ran the pytest suite successfully and observed `ALL SEARCHLITEX INTEGRATION CHECKS PASSED` against the Dockerized FastAPI service and real PostgreSQL database. These are locally reported results, not independent proof of CI success.
+
+| Verification | Result |
+|---|---|
+| Python pytest suite | **Passed locally** (exact count not recorded) |
+| Docker image and PostgreSQL startup | **Passed locally** |
+| Live API + PostgreSQL integration suite | **Passed locally** |
+| Duplicate URL handling, indexing and TF-IDF query | **Verified by integration suite** |
+| Actual remote HTML crawling | **Not independently verified by existing integration suite** |
+| Java client execution against API | **Not independently verified by existing integration suite** |
+| GitHub Actions | **See live workflow status badge and Actions tab** |
+
 ## Tests
 
 ```bash
@@ -109,6 +123,10 @@ docker run --rm -v "$PWD":/app -w /app python:3.12-slim sh -c "pip install -r re
 
 The integration suite uses actual PostgreSQL + FastAPI containers to test upserts, duplicate URL handling, TF-IDF queries, empty queries and document listing. GitHub Actions also checks Python tests, the Java client compilation, and the live integration suite. See [Actions](https://github.com/jadu12git/SearchLiteX/actions) for real results.
 
+## Ranking and indexing explained
+
+On ingestion, SearchLiteX normalizes text to lowercase Unicode tokens and stores each document-term frequency as a PostgreSQL posting. Updating the same URL replaces its postings in one database transaction. At search time, it tokenizes the query, computes smoothed inverse-document-frequency weights across the indexed corpus, and ranks matching documents using cosine similarity. Results include the page URL, title, snippet and score. This straightforward implementation favors clarity and testability over large-corpus efficiency: the current ranking code reads all documents and postings into Python memory rather than performing candidate retrieval using a selective SQL posting-list intersection.
+
 ## Engineering trade-offs
 
 | Decision | Benefit | Limitation |
@@ -121,6 +139,13 @@ The integration suite uses actual PostgreSQL + FastAPI containers to test upsert
 | Docker Compose | Reproducible local development | No authentication, TLS, observability or production orchestration |
 
 **Security note:** The crawler rejects private/reserved DNS resolutions, disables redirects and proxy-env reliance, and restricts content size. Because DNS can change between checking and connecting, this is **not a production-grade SSRF defense**. Do not expose the crawl API publicly without stronger network egress restrictions, authentication and DNS pinning.
+
+## Further verification and future development
+
+- Exercise `/api/crawl` against a permitted public HTML page and verify the page can be found afterward; the live integration suite currently seeds documents directly rather than crawling the internet.
+- Execute the Java 21 CLI against the running API to confirm the cross-language request path beyond Java compilation.
+- Add crawler URL-policy tests using network-isolated fixtures, SQL-backed integration tests for posting updates and deletion, and pagination/performance measurements.
+- Improve candidate retrieval by querying posting lists in PostgreSQL before scoring rather than loading all rows.
 
 ## Scope
 

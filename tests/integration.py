@@ -4,7 +4,7 @@ import os
 import time
 import uuid
 from urllib.request import Request, urlopen
-from urllib.error import URLError
+from urllib.error import URLError, HTTPError
 
 BASE = os.getenv("SEARCHLITEX_URL", "http://localhost:8000")
 def call(method, path, data=None):
@@ -13,12 +13,16 @@ def call(method, path, data=None):
         return resp.status, json.loads(resp.read()) if resp.status != 204 else None
 
 def main():
-    for _ in range(50):
+    for attempt in range(90):
         try:
             _, health = call("GET", "/health")
-            if health["status"] == "ok": break
-        except URLError: time.sleep(1)
-    else: raise AssertionError("API not ready")
+            if health["status"] == "ok":
+                break
+        except (URLError, HTTPError, OSError, TimeoutError, ConnectionError):
+            pass  # API may reset connections while its process is starting.
+        time.sleep(1)
+    else:
+        raise AssertionError("API not ready after 90 seconds; check: docker compose logs api")
     marker = uuid.uuid4().hex
     ids = []
     try:

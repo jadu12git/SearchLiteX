@@ -1,0 +1,1 @@
+"""SearchLiteX: a document crawler and TF-IDF search engine."""

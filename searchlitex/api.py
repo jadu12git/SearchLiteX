@@ -1,10 +1,9 @@
 from contextlib import asynccontextmanager
-from urllib.parse import urlsplit
-import os
+import httpx
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field
 from .store import Store
-from .crawler import crawl, parse_html
+from .crawler import crawl
 
 store = Store()
 
@@ -43,10 +42,14 @@ def add_document(doc: DocumentInput):
 def crawl_url(item: CrawlInput):
     try:
         url, title, body = crawl(item.url)
-        return store.upsert(url, title, body)
-    except (ValueError, OSError, Exception) as exc:
-        # Deliberately avoid returning potentially sensitive network/DB details.
-        raise HTTPException(422, f"Crawl failed: {type(exc).__name__}")
+    except ValueError as exc:
+        # Invalid URL or unsupported HTML content is a client error.
+        raise HTTPException(422, f"Crawl rejected: {type(exc).__name__}") from exc
+    except (httpx.HTTPError, OSError) as exc:
+        # Unreachable remote servers are not invalid database requests.
+        raise HTTPException(502, "Remote page could not be fetched") from exc
+    # Let database failures propagate as server errors, not misleading 422 responses.
+    return store.upsert(url, title, body)
 
 @app.get("/api/search")
 def search(q: str = Query(default="", max_length=500), limit: int = Query(default=10, ge=1, le=50)):

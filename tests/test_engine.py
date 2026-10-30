@@ -26,6 +26,27 @@ def test_unknown_terms():
 def test_tie_is_deterministic():
     assert [x[0] for x in rank("cat", {"2": {"cat": 1}, "1": {"cat": 1}})] == ["1", "2"]
 
+
+def test_ranking_penalizes_unrelated_terms():
+    docs = {
+        "focused": {"python": 2},
+        "noisy": {"python": 2, "java": 20},
+    }
+    assert rank("python", docs)[0][0] == "focused"
+
+def test_ranking_uses_corpus_wide_idf():
+    docs = {
+        "rare": {"rare": 1},
+        "common": {"common": 1},
+        "both": {"rare": 1, "common": 1},
+    }
+    assert rank("rare", docs)[0][0] == "rare"
+
+def test_unseen_query_term_and_result_limit():
+    docs = {"1": {"python": 3}, "2": {"python": 1, "java": 3}}
+    assert [doc_id for doc_id, _ in rank("python missing", docs, limit=1)] == ["1"]
+    assert rank("python", docs, limit=0) == []
+
 def test_html_cleaning():
     title, text = parse_html("<html><head><title>Hi</title><script>bad()</script></head><body><p>Search content</p></body></html>")
     assert title == "Hi" and "Search content" in text and "bad()" not in text

@@ -66,3 +66,14 @@ def test_private_url_blocked():
 def test_file_scheme_blocked():
     with pytest.raises(ValueError):
         safe_url("file:///etc/passwd")
+
+@pytest.mark.parametrize("url", [
+    "https://example.com:not-a-port/",
+    "https://example.com:65536/",
+    "https://example.com:0/",
+    "https://[broken/",
+])
+def test_malformed_url_is_validation_error(url):
+    # Malformed ports and IPv6 hosts should produce a controlled client error.
+    with pytest.raises(ValueError, match="Invalid URL"):
+        safe_url(url)

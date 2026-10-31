@@ -10,11 +10,20 @@ MAX_DOCUMENT_BYTES = 1_000_000
 def safe_url(raw: str) -> str:
     if not isinstance(raw, str) or len(raw) > 2048:
         raise ValueError("Invalid URL")
-    u = urlsplit(raw)
-    if u.scheme not in ("https", "http") or not u.hostname or u.username or u.password:
+    # urlsplit() and URL.port can raise ValueError for malformed IPv6 or ports.
+    # Normalize these to a validation error so the API returns HTTP 422, not 500.
+    try:
+        u = urlsplit(raw)
+        hostname = u.hostname
+        port = u.port
+    except ValueError as exc:
+        raise ValueError("Invalid URL") from exc
+    if port == 0:
+        raise ValueError("Invalid URL")
+    if u.scheme not in ("https", "http") or not hostname or u.username or u.password:
         raise ValueError("Only public HTTP(S) URLs are supported")
     try:
-        addresses = socket.getaddrinfo(u.hostname, u.port or (443 if u.scheme == "https" else 80))
+        addresses = socket.getaddrinfo(hostname, port or (443 if u.scheme == "https" else 80))
     except OSError as exc:
         raise ValueError("Cannot resolve hostname") from exc
     if not addresses:

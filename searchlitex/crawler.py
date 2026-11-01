@@ -57,10 +57,12 @@ def crawl(url: str) -> tuple[str, str, str]:
             content_type = response.headers.get("content-type", "").lower()
             if "text/html" not in content_type:
                 raise ValueError("Only HTML pages can be crawled")
+            # Honor the declared HTML charset; httpx falls back to UTF-8 for unknown values.
+            encoding = response.encoding or "utf-8"
             body = bytearray()
             for chunk in response.iter_bytes():
                 body.extend(chunk)
                 if len(body) > MAX_DOCUMENT_BYTES:
                     raise ValueError("Document exceeds size limit")
-    title, text = parse_html(body.decode("utf-8", errors="replace"))
+    title, text = parse_html(body.decode(encoding, errors="replace"))
     return url, title, text

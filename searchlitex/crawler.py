@@ -1,4 +1,5 @@
 """Explicit-URL HTML retrieval with SSRF safety rules. No arbitrary recursive spidering."""
+import codecs
 import ipaddress
 import socket
 from urllib.parse import urlsplit, urlunsplit
@@ -57,8 +58,12 @@ def crawl(url: str) -> tuple[str, str, str]:
             content_type = response.headers.get("content-type", "").lower()
             if "text/html" not in content_type:
                 raise ValueError("Only HTML pages can be crawled")
-            # Honor the declared HTML charset; httpx falls back to UTF-8 for unknown values.
+            # Unknown charset labels must not crash the crawl with LookupError.
             encoding = response.encoding or "utf-8"
+            try:
+                codecs.lookup(encoding)
+            except LookupError:
+                encoding = "utf-8"
             body = bytearray()
             for chunk in response.iter_bytes():
                 body.extend(chunk)

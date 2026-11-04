@@ -39,7 +39,8 @@ def parse_html(html: str) -> tuple[str, str]:
     if not isinstance(html, str):
         raise ValueError("HTML must be text")
     soup = BeautifulSoup(html, "html.parser")
-    for node in soup(["script", "style", "noscript", "svg"]):
+    # Template contents are inert until instantiated; do not index hidden boilerplate.
+    for node in soup(["script", "style", "noscript", "svg", "template"]):
         node.decompose()
     title = soup.title.get_text(" ", strip=True) if soup.title else "Untitled page"
     text = soup.get_text(" ", strip=True)

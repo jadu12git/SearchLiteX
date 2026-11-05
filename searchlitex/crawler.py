@@ -42,7 +42,7 @@ def parse_html(html: str) -> tuple[str, str]:
     # Template contents are inert until instantiated; do not index hidden boilerplate.
     for node in soup(["script", "style", "noscript", "svg", "template"]):
         node.decompose()
-    title = soup.title.get_text(" ", strip=True) if soup.title else "Untitled page"
+    title = (soup.title.get_text(" ", strip=True) if soup.title else "") or "Untitled page"
     text = soup.get_text(" ", strip=True)
     if not text:
         raise ValueError("Document has no searchable content")

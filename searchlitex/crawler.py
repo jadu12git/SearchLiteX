@@ -53,9 +53,11 @@ def crawl(url: str) -> tuple[str, str, str]:
     # Trust no redirects; never let a public URL redirect into a private network.
     with httpx.Client(follow_redirects=False, timeout=10.0, trust_env=False) as client:
         with client.stream("GET", url, headers={"User-Agent": "SearchLiteX/1.0 (educational crawler)"}) as response:
-            response.raise_for_status()
+            # Classify redirects as rejected crawl targets before httpx raises
+            # HTTPStatusError for 3xx responses (which the API maps to 502).
             if 300 <= response.status_code < 400:
                 raise ValueError("Redirects are not followed")
+            response.raise_for_status()
             content_type = response.headers.get("content-type", "").lower()
             if "text/html" not in content_type:
                 raise ValueError("Only HTML pages can be crawled")

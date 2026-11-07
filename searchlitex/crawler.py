@@ -59,7 +59,8 @@ def crawl(url: str) -> tuple[str, str, str]:
                 raise ValueError("Redirects are not followed")
             response.raise_for_status()
             content_type = response.headers.get("content-type", "").lower()
-            if "text/html" not in content_type:
+            # Match the media type, not a substring (e.g. application/x-text/html).
+            if content_type.split(";", 1)[0].strip() != "text/html":
                 raise ValueError("Only HTML pages can be crawled")
             # Unknown charset labels must not crash the crawl with LookupError.
             encoding = response.encoding or "utf-8"

@@ -11,6 +11,10 @@ MAX_DOCUMENT_BYTES = 1_000_000
 def safe_url(raw: str) -> str:
     if not isinstance(raw, str) or len(raw) > 2048:
         raise ValueError("Invalid URL")
+    # urlsplit silently strips leading C0 controls and embedded tabs/newlines.
+    # Reject ambiguous input rather than fetching a different normalized URL.
+    if raw != raw.strip() or any(ord(char) < 32 or ord(char) == 127 for char in raw):
+        raise ValueError("Invalid URL")
     # urlsplit() and URL.port can raise ValueError for malformed IPv6 or ports.
     # Normalize these to a validation error so the API returns HTTP 422, not 500.
     try:

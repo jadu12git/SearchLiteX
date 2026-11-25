@@ -39,6 +39,19 @@ def main():
         assert empty["results"] == []
         _, listing = call("GET", "/api/documents")
         assert any(row["id"] == a["id"] for row in listing)
+        # Re-indexing must remove stale postings, not merely preserve the ID.
+        replacement_term = "replacement" + marker
+        _, updated = call("POST", "/api/documents", {"url": f"https://example.org/{marker}/a", "title": "Updated document", "content": replacement_term})
+        assert updated["id"] == a["id"]
+        _, stale = call("GET", "/api/search?q=python%20index")
+        assert all(row["id"] != a["id"] for row in stale["results"])
+        _, fresh = call("GET", f"/api/search?q={replacement_term}")
+        assert any(row["id"] == a["id"] for row in fresh["results"])
+        status, _ = call("DELETE", f"/api/documents/{a['id']}")
+        assert status == 204
+        ids.remove(a["id"])
+        _, deleted = call("GET", f"/api/search?q={replacement_term}")
+        assert all(row["id"] != a["id"] for row in deleted["results"])
         print("PASS real PostgreSQL upsert, duplicate URL deduplication, TF-IDF ranking, query and listing")
         print("ALL SEARCHLITEX INTEGRATION CHECKS PASSED")
     finally:

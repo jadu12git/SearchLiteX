@@ -25,15 +25,16 @@ def main():
         raise AssertionError("API not ready after 90 seconds; check: docker compose logs api")
     marker = uuid.uuid4().hex
     ids = []
+    python_term = "python" + marker
     try:
-        status, a = call("POST", "/api/documents", {"url": f"https://example.org/{marker}/a", "title": "Python search", "content": "python python inverted index tf idf"})
+        status, a = call("POST", "/api/documents", {"url": f"https://example.org/{marker}/a", "title": "Python search", "content": f"{python_term} {python_term} inverted index tf idf"})
         assert status == 201
         ids.append(a["id"])
         _, b = call("POST", "/api/documents", {"url": f"https://example.org/{marker}/b", "title": "Java client", "content": "java java java rest api"})
         ids.append(b["id"])
-        _, duplicate = call("POST", "/api/documents", {"url": f"https://example.org/{marker}/a", "title": "Python search", "content": "python python inverted index tf idf"})
+        _, duplicate = call("POST", "/api/documents", {"url": f"https://example.org/{marker}/a", "title": "Python search", "content": f"{python_term} {python_term} inverted index tf idf"})
         assert duplicate["id"] == a["id"]
-        _, result = call("GET", "/api/search?q=python%20index")
+        _, result = call("GET", f"/api/search?q={python_term}")
         assert result["results"] and result["results"][0]["id"] == a["id"]
         _, empty = call("GET", "/api/search?q=")
         assert empty["results"] == []
@@ -43,7 +44,7 @@ def main():
         replacement_term = "replacement" + marker
         _, updated = call("POST", "/api/documents", {"url": f"https://example.org/{marker}/a", "title": "Updated document", "content": replacement_term})
         assert updated["id"] == a["id"]
-        _, stale = call("GET", "/api/search?q=python%20index")
+        _, stale = call("GET", f"/api/search?q={python_term}")
         assert all(row["id"] != a["id"] for row in stale["results"])
         _, fresh = call("GET", f"/api/search?q={replacement_term}")
         assert any(row["id"] == a["id"] for row in fresh["results"])

@@ -53,11 +53,11 @@ def main():
         ids.remove(a["id"])
         _, deleted = call("GET", f"/api/search?q={replacement_term}")
         assert all(row["id"] != a["id"] for row in deleted["results"])
-        print("PASS real PostgreSQL upsert, duplicate URL deduplication, TF-IDF ranking, query and listing")
-        print("ALL SEARCHLITEX INTEGRATION CHECKS PASSED")
     finally:
         for id in ids:
             call("DELETE", f"/api/documents/{id}")
+    print("PASS real PostgreSQL upsert, duplicate URL deduplication, TF-IDF ranking, query and listing")
+    print("ALL SEARCHLITEX INTEGRATION CHECKS PASSED")
 
 if __name__ == "__main__":
     main()
